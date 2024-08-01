@@ -6,13 +6,18 @@
 #include <tlhelp32.h>
 #include <thread>
 
-void runCommand1(const std::string& command1) {
+std::string PATH = "C:\\Users\\MAC\\Desktop\\11.31\\";
+std::wstring cobaltdllPath = L"C:\\Users\\MAC\\Desktop\\Cobalt.dll";
+std::wstring dllPath = L"C:\\Users\\MAC\\Desktop\\GS.dll";
+
+bool bIsLoaded = false;
+bool bSlowAssPC = true;
+
+auto runCommand1(const std::string& command1) -> void {
     system(command1.c_str());
-    std::cout << "ran fortnite game \n sleeping for 15 secs gang" << std::endl;
-    Sleep(15000);
 }
 
-DWORD GetProcessID(const std::wstring& processName) {
+auto GetProcessID(const std::wstring& processName) -> DWORD {
     PROCESSENTRY32 pe;
     pe.dwSize = sizeof(PROCESSENTRY32);
 
@@ -36,7 +41,7 @@ DWORD GetProcessID(const std::wstring& processName) {
     return 0;
 }
 
-bool InjectDLL(DWORD processID, const std::wstring& dllPath) {
+auto InjectDLL(DWORD processID, const std::wstring& dllPath) -> bool {
     HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processID);
     if (hProcess == NULL) {
         std::wcerr << L"Failed to open process: " << GetLastError() << std::endl;
@@ -74,24 +79,14 @@ bool InjectDLL(DWORD processID, const std::wstring& dllPath) {
     return true;
 }
 
-/*
-  TODO:
-  ~ Try to use something OTHER than threads
-  ~ Work on injection. Uses the same way ExtremeInjector's "Standard Injection" is. It works so why change it.
-  ~ Clean up code a bit
-  ~ Find the PERFECT time to inject into the game (Or add a check into the DLL to see if Viewport is init.)
-*/
-
-int main() {
-    std::string command1 = "CMD /c \"C:\\Users\\MAC\\Desktop\\11.31\\FortniteGame\\Binaries\\Win64\\FortniteClient-Win64-Shipping.exe "
+auto loadfort() -> void {
+    std::string command1 = PATH + "FortniteGame\\Binaries\\Win64\\FortniteClient-Win64-Shipping.exe "
         "-epicapp=Fortnite -epicenv=Prod -epiclocale=en-us -epicportal -nobe -fromfl=eac "
         "-fltoken=919348d6add4c4c7c7507e61 -skippatchcheck\"";
-    std::string path2 = "C:\\Users\\MAC\\Desktop\\11.31\\FortniteGame\\Binaries\\Win64\\FortniteClient-Win64-Shipping_BE.exe";
+    std::string path2 = PATH + "FortniteGame\\Binaries\\Win64\\FortniteClient-Win64-Shipping_BE.exe";
     std::string command2 = "start \"\" \"" + path2 + "\"";
-    std::string path3 = "C:\\Users\\MAC\\Desktop\\11.31\\FortniteGame\\Binaries\\Win64\\FortniteLauncher.exe";
+    std::string path3 = PATH + "FortniteGame\\Binaries\\Win64\\FortniteLauncher.exe";
     std::string command3 = "start \"\" \"" + path3 + "\"";
-    
-    std::wstring dllPath = L"C:\\Users\\MAC\\Desktop\\GS.dll";
 
     system(command3.c_str());
     std::cout << "ran fortnitelauncher" << std::endl;
@@ -99,7 +94,7 @@ int main() {
     std::cout << "ran the bullshit battleye" << std::endl;
 
     std::thread t(runCommand1, command1);
-    t.detach(); 
+    t.detach();
     std::cout << "ran fortnite game \n sleeping for 120 secs gang" << std::endl;
 
     Sleep(10000);
@@ -119,23 +114,40 @@ int main() {
     Sleep(10000);
     std::cout << "8" << std::endl; // Loading (not initilized the Viewport yet)
     Sleep(10000);
-    std::cout << "9" << std::endl; // Loading (not initilized the Viewport yet)
-    Sleep(10000);
-    std::cout << "10" << std::endl; // Loading (not initilized the Viewport yet)
-    Sleep(10000);
-    std::cout << "11" << std::endl; // Loading (not initilized the Viewport yet) ???
-    Sleep(10000);
-    std::cout << "12" << std::endl; // slow ass i3 fianlly loaded the viewport but the dll crashes because fuck it i guess
-
+    if (bSlowAssPC){
+        std::cout << "9" << std::endl; // Loading (not initilized the Viewport yet)
+        Sleep(10000);
+        std::cout << "10" << std::endl; // Loading (not initilized the Viewport yet)
+        Sleep(10000);
+        std::cout << "11" << std::endl; // Loading (not initilized the Viewport yet) ???
+        Sleep(10000);
+        std::cout << "12" << std::endl; // slow ass i3 fianlly loaded the viewport but the dll crashes because fuck it i guess
+    }
     std::cout << "fud injection in progress..." << std::endl;
+}
+
+/*
+  TODO:
+  ~ Clean up code a bit
+  ~ GUI Maybe
+*/
+
+auto main() -> int {
+
+    loadfort();
 
     DWORD processID = GetProcessID(L"FortniteClient-Win64-Shipping.exe");
     
     Sleep(5000);
 
     if (processID) {
-        if (InjectDLL(processID, dllPath)) {
-            std::wcout << L"Successfully injected DLL!" << std::endl;
+        if (!bIsLoaded){
+            if (InjectDLL(processID, cobaltdllPath)) {
+                std::cout << "Successfully injected Cobalt!" << std::endl;
+                if (InjectDLL(processID, dllPath)) {
+                    std::cout << "Successfully injected Gameserver!" << std::endl;
+                }
+            }
         }
         else {
             std::wcerr << L"Failed to inject DLL." << std::endl;
@@ -145,6 +157,12 @@ int main() {
         std::wcerr << L"Process not found." << std::endl;
     }
 
+    while (true) {
+        Sleep(2500);
+        if (!processID) {
+            main();
+        }
+    }
 
     return 0;
 }
